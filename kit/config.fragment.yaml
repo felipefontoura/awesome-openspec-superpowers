@@ -1,0 +1,13 @@
+# awesome-openspec-superpowers:start (managed by install.sh)
+rules:
+  proposal:
+    - "End with an \"Out of scope\" list; anything not in the proposal is out"
+    - "End with the open questions the human must answer before approval; none is a valid answer"
+    - "Read the code the change touches before writing; never ask what the code answers"
+operations:
+  archive:
+    guidance:
+      - "Run the CLI to archive (openspec archive <id> --yes) so the delta specs merge; do not move files by hand"
+      - "Before archiving, confirm every step in tasks.md is ticked and the full test suite passes"
+      - "After archiving, run superpowers:finishing-a-development-branch"
+# awesome-openspec-superpowers:end

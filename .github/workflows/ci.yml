@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly: catch OpenSpec releases that break the install
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test test/*.test.mjs
+
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: shellcheck install.sh
+      - name: Install into a fresh repo with the latest OpenSpec, twice
+        run: |
+          set -euo pipefail
+          npm i -g @fission-ai/openspec@latest
+          openspec --version
+          mkdir /tmp/app && cd /tmp/app && git init -q
+          bash "$GITHUB_WORKSPACE/install.sh"
+          bash "$GITHUB_WORKSPACE/install.sh"
+          test "$(grep -c 'awesome-openspec-superpowers:start' AGENTS.md)" = 1
+          test "$(grep -c 'awesome-openspec-superpowers:start' openspec/config.yaml)" = 1
+          grep -q '@AGENTS.md' CLAUDE.md
+          grep -q 'osp.mjs' .claude/settings.json
+          test -f .claude/skills/openspec-context/SKILL.md
+          node .claude/osp/osp.mjs status
+          openspec schema validate superpowers
+          grep -q '^schema: superpowers' openspec/config.yaml
+          grep -q 'superpowers:subagent-driven-development' openspec/schemas/superpowers/schema.yaml
+          openspec new change add-demo 2>&1 | grep -q "schema 'superpowers'"
+          out="$(openspec instructions tasks --change add-demo --json 2>&1)"
+          if grep -qi 'ignoring' <<<"$out"; then echo "$out" | head -3; exit 1; fi
+          grep -q 'Implementation Plan' <<<"$out"
+          jq -e '.enabledPlugins["superpowers@superpowers-marketplace"]' .claude/settings.json

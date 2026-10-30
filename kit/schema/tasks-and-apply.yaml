@@ -1,0 +1,87 @@
+  - id: tasks
+    generates: tasks.md
+    description: The implementation plan, in Superpowers' plan format, tracked by OpenSpec
+    template: tasks.md
+    instruction: |
+      tasks.md is BOTH OpenSpec's task list and Superpowers' implementation plan.
+      There is one plan for this change and it lives here: never write
+      docs/superpowers/plans/, never write a second plan.md.
+
+      Before writing, check design.md for Open Questions. If one would change
+      what gets built, ask the user first.
+
+      If the superpowers:writing-plans skill is available, invoke it with this
+      change folder as its spec, and tell it the plan location preference is
+      this tasks.md (its own rule: user preferences for plan location override
+      its default). Otherwise write the same format yourself.
+
+      Format (OpenSpec counts every `- [ ]` line; Superpowers finds tasks by
+      `### Task N:` headings, so keep both exactly):
+      - Header: `# <change> Implementation Plan`, then `**Spec:** openspec/changes/<id>/`,
+        then `**Mode:** light | standard | thorough` (see below), then one line
+        on the goal.
+      - One `### Task N: <name>` per unit a reviewer could accept or reject on
+        its own. Under it: `**Implements:** <capability> / <requirement>`, the
+        files it creates or modifies, then checkbox steps.
+      - Steps are `- [ ] **Step k: <action>**`, one action with a checkable
+        result: write the failing test, run it and see it fail, implement,
+        run the tests and see them pass, commit (message `<id>: Task N <name>`).
+      - Every `#### Scenario:` in the delta specs maps to at least one named
+        test in some task ("test: rejects empty input"). List any scenario
+        you could not map, and why, under `## Uncovered scenarios`.
+      - Specify interfaces, file paths, names and the tests that prove each
+        task. Do not paste the full implementation: the executor writes the
+        code.
+
+      Mode (the human approves it with the change):
+      - light: a small change, few tasks, low risk. One agent works through
+        the tasks test-first and asks for one review at the end. Cheapest.
+      - standard: the default. A fresh subagent per task, test first, review
+        per task.
+      - thorough: standard plus a final whole-branch review and verification
+        against every scenario. For risky, cross-cutting or security work.
+      Pick the lightest mode that fits and say why in one line.
+    requires:
+      - specs
+      - design
+
+apply:
+  requires: [ tasks ]
+  tracks: tasks.md
+  instruction: |
+    tasks.md is the approved plan. Read it, the delta specs and design.md.
+    Do not write another plan.
+
+    Code is behind a human approval gate. If a write is blocked, stop, summarise
+    the change and ask the human to run `node .claude/osp/osp.mjs approve <id>`
+    themselves. Never work around it.
+
+    Workspace: work in place on branch `change/<id>` (create it if needed). Do
+    not create a git worktree unless the human asks; if they do, commit the
+    change folder first, or the worktree will not see it.
+
+    Execute by the plan's Mode:
+    - light: work through the tasks yourself with superpowers:test-driven-development,
+      then superpowers:requesting-code-review once for the whole change.
+    - standard: superpowers:subagent-driven-development with tasks.md as the
+      plan path.
+    - thorough: as standard, then a final superpowers:requesting-code-review
+      of the whole branch and a check that every scenario has a passing test.
+    If subagents are unavailable on this host, use light whatever the Mode says,
+    and say so. If the Superpowers skills are not installed, follow the same
+    steps by hand: failing test first, then code, then tests green.
+
+    Tick each `- [ ]` step in tasks.md the moment it is done, not at the end:
+    OpenSpec tracks progress from these boxes and archive warns on unticked ones.
+    Commit per task with message `<id>: Task N <name>`, tasks.md included. The
+    first commit also adds openspec/changes/<id>/.approved (the human's approval
+    record; never edit it).
+
+    If the work needs behaviour the specs do not describe, or a spec turns out
+    wrong, stop: update the delta spec (/opsx:update) and ask for re-approval.
+    Never narrow, skip or reinterpret specified behaviour to make a task fit.
+
+    When every box is ticked: superpowers:verification-before-completion (run
+    the full test suite, show the output), then tell the human the change is
+    ready for /opsx:archive, which must run `openspec archive <id> --yes` so the
+    delta specs merge into openspec/specs/.
